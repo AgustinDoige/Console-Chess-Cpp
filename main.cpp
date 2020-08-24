@@ -2,41 +2,78 @@
 #include <stdio.h>
 #include <set>
 
-typedef _Cond * Condition;
+/*
+Regardless of how they are called and depicted, team1 will be the team that
+starts from the bottom of the console and that makes the first move.
+*/
 
-struct _Cond {
-    std::set<int> team1C;
-    std::set<int> team2C;
+class Condition {
+public:
+    std::set<int> emptyCells; // Signals the board which cells must be empty
+    int t1present;  // Signals the board which cells must have a piece of team 1
+    int t2present;  // Signals the board which cells must have a piece of team 2
+    int t1absent;   // Signals the board which cells must not have a piece of team 1
+    int t2absent;   // Signals the board which cells must not have a piece of team 2
+    // -1 for non signals
+    Condition() : t1present(-1), t2present(-1), t1absent(-1), t2absent(-1) {}
 };
 
 class Piece {
-private:
+protected:
     int firstp;
     int secondp;
     bool teamOne;
 public:
     Piece(int f, int s, bool t) : firstp(f), secondp(s), teamOne(t) {}
 
+    bool team() {
+        return teamOne;
+    }
+
     virtual int type() =0; // Returns which piece this one is
 
-    virtual Condition move(int a1, int a2, int b1, int b2) =0;
+    virtual Condition move(int ax, int ay, int bx, int by) =0;
 
-    bool inbounds() {
-        return (firstp>0 && secondp>0 && firstp<8 && secondp<8);
+    inline bool inbounds(int f, int s) {
+        return (f>0 && s>0 && f<8 && s<8);
     }
 };
 
 class King : public Piece {
 public:
-    Condition move(int a1, int a2, int b1, int b2) {
-        Condition cond = new Condition;
+    Condition move(int ax, int ay, int bx, int by) {
         bool possible;
-        possible = abs(a1-b1)<2;
-        possible = possible && abs(a2-b2)<2;
-
+        Condition cond;
+        possible = abs(ax-bx)<2 & abs(ay-by)<2;
+        if(!possible) {
+            cond.t1absent = 10*ax + ay;
+            cond.t2absent = cond.t1absent;
+        } else if (teamOne) cond.t1absent = 10*bx + by;
+        else cond.t2absent = 10*bx + by;
+        return cond;
     }
-
 };
+
+class Pawn : public Piece {
+public:
+    Condition move(int ax, int ay, int bx, int by) {
+        Condition cond;
+        if(teamOne) {
+            if(ax!=bx+1 || abs(ay-by)>1) {
+                cond.t1absent = 10*ax + ay;
+                cond.t2absent = cond.t1absent;
+            } else if (ay==by) cond.emptyCells.insert(10*bx + by);
+            else cond.t2present = 10*bx + by;
+        } else { // Team 2
+            if(ax+1!=bx || abs(ay-by)>1) {
+                cond.t1absent = 10*ax + ay;
+                cond.t2absent = cond.t1absent;
+            } else if (ay==by) cond.emptyCells.insert(10*bx + by);
+            else cond.t1present = 10*bx + by;
+        }
+    }
+};
+
 
 int main() {
     return EXIT_SUCCESS;
